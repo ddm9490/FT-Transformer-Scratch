@@ -1,0 +1,7 @@
+_target_: lightning.Trainer
+
+max_epochs: ${model.total_epochs}
+accelerator: "auto"
+devices: 1
+precision: "16-mixed"
+gradient_clip_val : 1.0

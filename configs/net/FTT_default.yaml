@@ -1,0 +1,7 @@
+_target_: src.model.FTTModel
+out_dim: ${data.out_features}
+d_model: 64
+num_self_attn_layers : 3
+nhead : 4
+dropout_p : 0.2
+share_ffn : false

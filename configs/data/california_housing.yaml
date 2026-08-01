@@ -1,0 +1,8 @@
+_target_: src.dataset.ScalableTabularDataModule
+dataset_dir: "data/california_housing.csv"
+batch_size: 128
+num_workers: 4
+target_names:
+  - "MedHouseVal" 
+
+out_features : 1
