@@ -10,6 +10,9 @@
 .venv/
 venv/
 env/
+data/*
+!data/ames_housing.csv
+!data/fetch_california_housing.csv
 scikit_learn_data
 checkpoints/*
 outputs
