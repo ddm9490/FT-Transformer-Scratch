@@ -4,14 +4,14 @@ import torch.nn.functional as F
 from typing import Any
 
 class SwiGLUFFN(nn.Module):
-    def __init__(self, d_model, d_ffn=None, dropout=0.1): # 1. 드롭아웃 추가
+    def __init__(self, d_model, d_ffn=None, dropout_p=0.1): # 1. 드롭아웃 추가
         super().__init__()
         if d_ffn is None:
             d_ffn = int(2 * (4 * d_model / 3))
         self.w1 = nn.Linear(d_model, d_ffn, bias=False)
         self.w2 = nn.Linear(d_model, d_ffn, bias=False)
         self.w3 = nn.Linear(d_ffn, d_model, bias=False)
-        self.drop = nn.Dropout(dropout)
+        self.drop = nn.Dropout(dropout_p)
 
     def forward(self, x):
         # 활성화 이후 드롭아웃을 걸어 뉴런 암기를 방지
@@ -19,12 +19,12 @@ class SwiGLUFFN(nn.Module):
         return self.w3(self.drop(hidden))
 
 class GatedMultiHeadAttention(nn.Module):
-    def __init__(self, d_model: int, num_heads: int = 4, dropout: float = 0.1):
+    def __init__(self, d_model: int, num_heads: int = 4, dropout_p = 0.2):
         super().__init__()
         self.d_model = d_model
         self.num_heads = num_heads
         self.head_dim = d_model // num_heads
-        self.dropout_p = dropout
+        self.dropout_p = dropout_p
 
         assert d_model % num_heads == 0, "d_model must be divisible by num_heads"
 
@@ -33,9 +33,14 @@ class GatedMultiHeadAttention(nn.Module):
         self.k_proj = nn.Linear(d_model, d_model, bias=False)
         self.v_proj = nn.Linear(d_model, d_model, bias=False)
 
+        self.alpha = nn.Parameter(torch.tensor(0.1))
+        self.beta = nn.Parameter(torch.tensor(0.1))
+        self.gamma = nn.Parameter(torch.tensor(0.1))
+
         # 🌟 Query 기반 Gate Projection (Head별로 적용하기 위해 head_dim 차원 사용)
         
         self.gate_proj = nn.Linear(self.head_dim, self.head_dim, bias=True)
+        nn.init.normal_(self.gate_proj.weight, mean=0.0, std=0.02)
         nn.init.constant_(self.gate_proj.bias, 2.0)
         
         # Final Output Projection
@@ -56,7 +61,7 @@ class GatedMultiHeadAttention(nn.Module):
         # Fast Attention (FlashAttention 계열) 백엔드를 그대로 사용할 수 있어 효율적입니다.
         attn_out = F.scaled_dot_product_attention(
             q, k, v, 
-            dropout_p=self.dropout_p if self.training else 0.0
+            dropout_p=self.dropout_p if self.training else 0.0  # 🌟 원래대로 다시 0.1 복구!
         )  # Shape: (batch_size, num_heads, seq_len, head_dim)
 
         # 3. 🌟 Query 기반 Post-Attention Output Gating
@@ -69,21 +74,29 @@ class GatedMultiHeadAttention(nn.Module):
         # 4. Concatenate Heads & Final Linear Projection
         # Shape: (batch_size, seq_len, d_model)
         out = gated_attn_out.transpose(1, 2).contiguous().view(batch_size, seq_len, self.d_model)
-        return self.out_proj(out), None
+        return self.out_proj(out)
 
 class AttentionBlock(nn.Module):
-    def __init__(self, d_model, num_heads=4, dropout=0.1, ffn_module=None, is_self_attn=True):
+    def __init__(self, d_model, num_heads=4, dropout_p=0.1, ffn_module=None, is_self_attn=True):
         super().__init__()
         self.is_self_attn = is_self_attn
 
-        self.attn = GatedMultiHeadAttention(d_model=d_model, num_heads=num_heads, dropout=dropout)
-        self.ffn = ffn_module if ffn_module is not None else SwiGLUFFN(d_model, dropout=dropout)
+        self.attn = GatedMultiHeadAttention(d_model=d_model, num_heads=num_heads, dropout_p=dropout_p)
+        self.ffn = ffn_module if ffn_module is not None else SwiGLUFFN(d_model, dropout_p=dropout_p)
 
         self.attn_ln = nn.RMSNorm(d_model)
         self.ffn_ln = nn.RMSNorm(d_model)
-        self.attn_drop = nn.Dropout(dropout)
-        self.ffn_drop = nn.Dropout(dropout)
+
+        self.attn_drop = nn.Dropout(dropout_p)
+        self.ffn_drop = nn.Dropout(dropout_p)
+
         self.kv_ln = nn.Identity() if is_self_attn else nn.RMSNorm(d_model)
+
+
+        self.res_gate_proj = nn.Linear(d_model, d_model, bias=True) 
+        self.res_gate_drop = nn.Dropout(dropout_p)   
+        nn.init.normal_(self.res_gate_proj.weight, mean=0.0, std=0.02)
+        nn.init.constant_(self.res_gate_proj.bias, 0.0)
 
     def forward(self, query, key, value):
         ln_query = self.attn_ln(query)
@@ -95,12 +108,17 @@ class AttentionBlock(nn.Module):
             ln_key = self.kv_ln(key)
             ln_value = self.kv_ln(value)
 
-        attn_out, _ = self.attn(query=ln_query, key=ln_key, value=ln_value)
+        attn_out = self.attn(query=ln_query, key=ln_key, value=ln_value)
         x = query + self.attn_drop(attn_out)
 
         ln_x = self.ffn_ln(x)
         ffn_out = self.ffn(ln_x)
-        return x + self.ffn_drop(ffn_out)
+
+        res_gate = torch.sigmoid(self.res_gate_proj(attn_out))
+        res_gate = self.res_gate_drop(res_gate)
+        mixed_ffn_out = res_gate * attn_out + (1.0 - res_gate) * ffn_out
+
+        return x + self.ffn_drop(mixed_ffn_out)
 
 
 class AttnRes(nn.Module):
@@ -122,20 +140,19 @@ class AttnRes(nn.Module):
 
 
 class SelfAttentionNetAttnres(nn.Module):
-    def __init__(self, d_model, num_layers, num_heads=4, dropout=0.1, share_ffn=False):
+    def __init__(self, d_model, num_layers, num_heads=4, dropout_p=0.1, share_ffn=False):
         super().__init__()
-        shared_ffn = SwiGLUFFN(d_model, dropout=dropout) if share_ffn else None
+        shared_ffn = SwiGLUFFN(d_model, dropout_p=dropout_p) if share_ffn else None
 
         # 💡 ModuleList 정의를 콤팩트하게 변경
         self.blocks = nn.ModuleList([
-            AttentionBlock(d_model, num_heads, dropout=dropout, ffn_module=shared_ffn) 
+            AttentionBlock(d_model, num_heads, dropout_p=dropout_p, ffn_module=shared_ffn) 
             for _ in range(num_layers)
         ])
         self.attnres_layers = nn.ModuleList([AttnRes(d_model) for _ in range(num_layers)])
 
     def forward(self, query):
         history = [query]
-
         for block, attnres_layer in zip(self.blocks, self.attnres_layers):
             Q_base = attnres_layer(history)
             current_query = block(query=Q_base, key=Q_base, value=Q_base)
@@ -155,7 +172,7 @@ class FTTModel(nn.Module):
             d_model=d_model,
             num_layers=num_self_attn_layers,
             num_heads=nhead,
-            dropout=dropout_p,
+            dropout_p=dropout_p,
             share_ffn=share_ffn
         )
         

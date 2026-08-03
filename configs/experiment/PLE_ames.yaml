@@ -1,0 +1,17 @@
+# @package _global_
+run_name: "ames_baseline"
+
+defaults:
+  - override /data : ames_housing
+  - override /tokenizer : PLE_linear
+  - _self_
+
+tokenizer:
+  n_bins : 4
+
+model:
+  base_lr : 0.001
+  net:
+    d_model : 32
+    num_self_attn_layers : 3
+    dropout_p : 0.2

@@ -23,7 +23,6 @@ class LightningFTTSystem(L.LightningModule):
         t_mult: int = 1,
     ):
         super().__init__()
-        # 외부 인스턴스 객체들을 무시하고 하이퍼파라미터 일괄 저장
         self.save_hyperparameters(ignore=["net", "tokenizer", "criterion"])
 
         # 하이드라 혹은 모델 가독성 매핑 유지
@@ -32,6 +31,7 @@ class LightningFTTSystem(L.LightningModule):
             "d_model": getattr(net, "d_model", None),
             "dropout_p": getattr(net, "dropout_p", None),
         })
+        self.save_hyperparameters(self.hparams)
 
         self.net = net
         self.tokenizer = tokenizer  # 💡 자식 모듈로 등록됨으로써 디바이스 이동 자동 처리

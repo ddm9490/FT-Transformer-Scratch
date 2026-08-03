@@ -21,6 +21,7 @@ def main(cfg: DictConfig):
         cfg.tokenizer,
         num_numerical=datamodule.num_numerical,
         cat_cardinalities=datamodule.cat_cardinalities,
+        bin_edges_dict = datamodule.bin_edges_dict
     )
 
     model = hydra.utils.instantiate(cfg.model, tokenizer = tokenizer)

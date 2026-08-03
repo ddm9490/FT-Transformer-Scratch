@@ -6,3 +6,4 @@ target_names:
   - "SalePrice" 
 
 out_features : 1
+n_bins: ${oc.select:tokenizer.n_bins, null}

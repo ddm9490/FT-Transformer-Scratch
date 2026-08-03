@@ -1,4 +1,4 @@
 _target_ : src.tokenizer.TabularFeatureTokenizer
 d_model : ${model.net.d_model}
-num_emmedding_method : "periodical"
-n_frequencies : 4
+num_emmedding_method : "PLE_linear"
+n_bins : 32

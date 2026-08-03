@@ -1,12 +1,12 @@
-project_name: "meca-gate-attention"
-run_name: "test"
+project_name: "ft-transformer"
+run_name: "best_model"
 
 defaults:
   - data : ames_housing
   - logger : wandb
-  - callbacks: default
+  - callbacks: swa
   - trainer : default
-  - tokenizer : FeatureTokenizer
+  - tokenizer : PLE
   - model: FTT_system      
   - _self_
 

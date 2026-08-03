@@ -17,6 +17,6 @@ utils:
 swa:
   _target_ : lightning.pytorch.callbacks.StochasticWeightAveraging
   swa_lrs : 0.00005              # SWA 구간에서 사용할 고정(또는 최저) 학습률 (보통 base_lr의 1/10 수준)
-  swa_epoch_start : 0.5      # 전체 에폭 중 어느 시점부터 평균을 낼 것인가? (0.5 = 50% 지점부터)
+  swa_epoch_start : 0.8      # 전체 에폭 중 어느 시점부터 평균을 낼 것인가? (0.5 = 50% 지점부터)
   annealing_epochs : 5           # SWA 학습률까지 부드럽게 줄어드는 에폭 수
   annealing_strategy : "cos"      # 학습률 감소 전략 ("cos" 또는 "linear")
