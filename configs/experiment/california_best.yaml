@@ -3,7 +3,7 @@ run_name: "best_model"
 
 defaults:
   - override /data : california_housing
-  - override /tokenizer : PLE_linear
+  - override /model : regression
   - _self_
 
 tokenizer:

@@ -1,7 +1,7 @@
-_target_: src.train_system.LightningFTTSystem
+_target_: src.train_system_classification.LightningFTTClassifier
 
 defaults:
-  - /net : FTT_default
+  - /net : default
 
 base_lr: 0.0005
 eta_min: 0.000001
@@ -16,4 +16,4 @@ restart_period: 20
 
 # criterion 인자로 들어갈 손실 함수
 criterion:
-  _target_: torch.nn.MSELoss
+  _target_: torch.nn.BCEWithLogitsLoss

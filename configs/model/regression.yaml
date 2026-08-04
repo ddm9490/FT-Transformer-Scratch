@@ -1,0 +1,19 @@
+_target_: src.train_system_regression.LightningFTTSystem
+
+defaults:
+  - /net : default
+
+base_lr: 0.0005
+eta_min: 0.000001
+weight_decay : 0.01
+
+warmup_epochs: 5
+total_epochs: 100
+
+base_epoch : 0
+use_restart: false
+restart_period: 20
+
+# criterion 인자로 들어갈 손실 함수
+criterion:
+  _target_: torch.nn.MSELoss

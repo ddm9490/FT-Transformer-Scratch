@@ -1,4 +1,4 @@
-project_name: "ft-transformer"
+project_name: "test"
 run_name: "best_model"
 
 defaults:
@@ -6,8 +6,8 @@ defaults:
   - logger : wandb
   - callbacks: swa
   - trainer : default
-  - tokenizer : PLE
-  - model: FTT_system      
+  - tokenizer : PLE_linear
+  - model: regression      
   - _self_
 
 seed_everything: 0

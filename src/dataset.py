@@ -15,7 +15,7 @@ from sklearn.pipeline import Pipeline
 from typing import Any
 
 class ScalableTabularDataModule(L.LightningDataModule):
-    def __init__(self, dataset_dir, target_names, out_features, batch_size=1024, num_workers=3, **kwargs):
+    def __init__(self, dataset_dir, target_names, out_features, task_type = "regression", stratify = False, batch_size=1024, num_workers=3, **kwargs):
         super().__init__()
         self.save_hyperparameters()
 
@@ -33,6 +33,9 @@ class ScalableTabularDataModule(L.LightningDataModule):
         self.bin_edges_dict = None
         self.n_bins = kwargs.get("n_bins", None)
 
+        self.task_type = task_type
+        self.stratify = stratify
+
     def setup(self, stage=None):
         # 1. 원본 데이터 로드 및 Feature/Target 분리
         df : Any = pd.read_csv(self.dataset_dir)
@@ -47,19 +50,27 @@ class ScalableTabularDataModule(L.LightningDataModule):
         self.has_categorical = len(self.cat_cols) > 0
 
         # 2. 안전한 데이터 분할 (Data Leakage 방지)
-        df_temp, df_test = train_test_split(df, test_size=0.2, random_state=42)
-        df_train, df_val = train_test_split(df_temp, test_size=0.2, random_state=42)
-
+        if self.stratify:
+            df_temp, df_test = train_test_split(df, test_size=0.2, random_state=42, stratify=df[self.target_names]) 
+            df_train, df_val = train_test_split(df_temp, test_size=0.2, random_state=42, stratify=df_temp[self.target_names]) 
+        else:
+            df_temp, df_test = train_test_split(df, test_size=0.2, random_state=42) 
+            df_train, df_val = train_test_split(df_temp, test_size=0.2, random_state=42,) 
         y_train= df_train[self.target_names].to_numpy().reshape(-1, 1)
         y_val= df_val[self.target_names].to_numpy().reshape(-1, 1)
         y_test= df_test[self.target_names].to_numpy().reshape(-1, 1)
         
-        y_scaler = PowerTransformer()
-        self.y_scaler = y_scaler
+        if self.task_type == "regression":
+            y_scaler = PowerTransformer()
+            self.y_scaler = y_scaler
 
-        y_train_scaled = y_scaler.fit_transform(y_train)
-        y_val_scaled = y_scaler.transform(y_val)
-        y_test_scaled = y_scaler.transform(y_test)
+            y_train_scaled = y_scaler.fit_transform(y_train)
+            y_val_scaled = y_scaler.transform(y_val)
+            y_test_scaled = y_scaler.transform(y_test)
+        elif self.task_type == "classification":
+            y_train_scaled = y_train
+            y_val_scaled = y_val
+            y_test_scaled = y_test
             
         
         # 4. 수치형 데이터 전처리 (결측치 채우기 및 분위수 변환)

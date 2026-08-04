@@ -57,7 +57,7 @@ class LightningFTTSystem(L.LightningModule):
         dm = self.trainer.datamodule 
         
         # 1. 넘파이 변환 (사이킷런 스케일러 대응)
-        y_np = y_tensor.detach().cpu().numpy()
+        y_np = y_tensor.detach().cpu().float().numpy()
         
         # 2. 데이터 모듈에 y_scaler가 존재하면 역변환 수행
         if hasattr(dm, "y_scaler") and dm.y_scaler is not None:
@@ -92,9 +92,12 @@ class LightningFTTSystem(L.LightningModule):
         outputs = self(x_num, x_cat)
         loss = self.criterion(outputs, y)
 
+        y_origin = self._inverse_transform_y(y)
+        outputs_origin = self._inverse_transform_y(outputs)
+
         self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         self.val_r2.update(outputs, y)
-        self.val_rmse.update(outputs, y)
+        self.val_rmse.update(outputs_origin, y_origin)
         return loss
 
     def test_step(self, batch, batch_idx):
@@ -102,9 +105,12 @@ class LightningFTTSystem(L.LightningModule):
         outputs = self(x_num, x_cat)
         loss = self.criterion(outputs, y)
 
+        y_origin = self._inverse_transform_y(y)
+        outputs_origin = self._inverse_transform_y(outputs)
+
         self.log("test/loss", loss, on_step=False, on_epoch=True)
         self.test_r2.update(outputs, y)
-        self.test_rmse.update(outputs, y)
+        self.test_rmse.update(outputs_origin, y_origin)
         return loss
 
     def on_validation_epoch_end(self):

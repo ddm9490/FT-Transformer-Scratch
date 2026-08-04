@@ -1,0 +1,22 @@
+# @package _global_
+run_name: "test"
+
+defaults:
+  - override /data : telco-customer-churn
+  - override /model : classification
+  - _self_
+
+tokenizer:
+  n_bins : 8
+
+model:
+  base_lr : 0.0005
+  net:
+    d_model : 128
+    num_self_attn_layers : 2
+    dropout_p : 0.2
+
+  criterion:
+    pos_weight:
+      _target_ : torch.tensor
+      data : 2.5

@@ -5,5 +5,6 @@ num_workers: 4
 target_names:
   - "SalePrice" 
 
+task_type : "regression"
 out_features : 1
 n_bins: ${oc.select:tokenizer.n_bins, null}
