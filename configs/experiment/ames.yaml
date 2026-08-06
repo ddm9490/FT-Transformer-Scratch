@@ -2,7 +2,7 @@
 run_name: "best_model"
 
 defaults:
-  - override /data : california_housing_clean
+  - override /data : ames_housing
   - override /model : regression
   - _self_
 
@@ -12,7 +12,7 @@ tokenizer:
 seed_everything : 100
 
 model:
-  base_lr : 0.01
+  base_lr : 0.0005
   net:
     d_model : 32
     num_self_attn_layers : 3

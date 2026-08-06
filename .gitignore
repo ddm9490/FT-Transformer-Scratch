@@ -13,6 +13,7 @@ env/
 data/*
 !data/ames_housing.csv
 !data/fetch_california_housing.csv
+!data/fetch_california_housing_clean.csv
 scikit_learn_data
 checkpoints/*
 outputs

@@ -15,7 +15,7 @@ from sklearn.pipeline import Pipeline
 from typing import Any
 
 class ScalableTabularDataModule(L.LightningDataModule):
-    def __init__(self, dataset_dir, target_names, out_features, task_type = "regression", stratify = False, batch_size=1024, num_workers=3, **kwargs):
+    def __init__(self, dataset_dir, target_names, out_features, task_type = "regression", stratify = False, batch_size=1024, num_workers=3, seed = 42, **kwargs):
         super().__init__()
         self.save_hyperparameters()
 
@@ -35,6 +35,9 @@ class ScalableTabularDataModule(L.LightningDataModule):
 
         self.task_type = task_type
         self.stratify = stratify
+        
+        self.seed = seed
+        
 
     def setup(self, stage=None):
         # 1. 원본 데이터 로드 및 Feature/Target 분리
@@ -51,11 +54,11 @@ class ScalableTabularDataModule(L.LightningDataModule):
 
         # 2. 안전한 데이터 분할 (Data Leakage 방지)
         if self.stratify:
-            df_temp, df_test = train_test_split(df, test_size=0.2, random_state=42, stratify=df[self.target_names]) 
-            df_train, df_val = train_test_split(df_temp, test_size=0.2, random_state=42, stratify=df_temp[self.target_names]) 
+            df_temp, df_test = train_test_split(df, test_size=0.2, random_state=self.seed, stratify=df[self.target_names]) 
+            df_train, df_val = train_test_split(df_temp, test_size=0.2, random_state=self.seed, stratify=df_temp[self.target_names]) 
         else:
-            df_temp, df_test = train_test_split(df, test_size=0.2, random_state=42) 
-            df_train, df_val = train_test_split(df_temp, test_size=0.2, random_state=42,) 
+            df_temp, df_test = train_test_split(df, test_size=0.2, random_state=self.seed) 
+            df_train, df_val = train_test_split(df_temp, test_size=0.2, random_state=self.seed,) 
         y_train= df_train[self.target_names].to_numpy().reshape(-1, 1)
         y_val= df_val[self.target_names].to_numpy().reshape(-1, 1)
         y_test= df_test[self.target_names].to_numpy().reshape(-1, 1)
@@ -77,7 +80,7 @@ class ScalableTabularDataModule(L.LightningDataModule):
         if self.has_numerical:
             num_pipeline = Pipeline([
                 ('imputer', SimpleImputer(strategy='median')), # 결측치 중앙값 자동 채우기
-                ('scaler', QuantileTransformer(n_quantiles=100, output_distribution="normal", random_state=42))                    # 스케일링 자동 적용
+                ('scaler', QuantileTransformer(n_quantiles=100, output_distribution="normal", random_state=self.seed))                    # 스케일링 자동 적용
             ]) 
             
             X_train_num = num_pipeline.fit_transform(df_train[self.num_cols])

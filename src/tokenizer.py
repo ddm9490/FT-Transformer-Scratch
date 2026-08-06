@@ -39,6 +39,16 @@ class TabularFeatureTokenizer(nn.Module):
                 self.num_weight = nn.Parameter(torch.randn(num_numerical, d_model))
                 self.num_bias = nn.Parameter(torch.randn(num_numerical, d_model))
             
+            elif num_emmedding_method == "PLE_periodic_linear":
+                bin_edges_dict = kwargs.get("bin_edges_dict",None)
+                if bin_edges_dict is not None:
+                    self.num_ple = PiecewiseLinearEncoding(bin_edges_dict, d_model)
+                self.num_weight = nn.Parameter(torch.randn(num_numerical, d_model))
+                self.num_bias = nn.Parameter(torch.randn(num_numerical, d_model))
+            
+                n_frequencies = kwargs.get("n_frequencies",16)
+                sigma = kwargs.get("sigma",0.01)
+                self.num_periodical_embedding = PeriodicEmbedding(num_numerical, d_model, n_frequencies = n_frequencies, sigma = sigma)
             self.num_feature_identifier = nn.Parameter(torch.randn(1,self.num_numerical,d_model))
             nn.init.normal_(self.num_feature_identifier, std = 0.01)
 
@@ -67,6 +77,12 @@ class TabularFeatureTokenizer(nn.Module):
                 x_num_ple_val = self.num_ple(x_num)
                 x_num_linear_val = x_num.unsqueeze(-1) * self.num_weight.unsqueeze(0) + self.num_bias.unsqueeze(0)
                 x_num_val = x_num_ple_val + x_num_linear_val
+            elif self.num_emmedding_method == "PLE_periodic_linear":
+                x_num_ple_val = self.num_ple(x_num)
+                x_num_linear_val = x_num.unsqueeze(-1) * self.num_weight.unsqueeze(0) + self.num_bias.unsqueeze(0)
+                x_num_periodic_val = self.num_periodical_embedding(x_num)
+                x_num_val = x_num_ple_val + x_num_linear_val + x_num_periodic_val
+            
             num_tokens = x_num_val + self.num_feature_identifier
             tokens.append(num_tokens)
 
