@@ -1,7 +1,6 @@
 checkpoint:
   _target_: lightning.pytorch.callbacks.ModelCheckpoint
   dirpath: "checkpoints/${project_name}/${run_name}"
-  filename : "${run_name}-forwarmup-{epoch:02d}"
   monitor: "val/loss"
   mode: "min"
   save_top_k: 1

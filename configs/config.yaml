@@ -3,14 +3,14 @@ run_name: "best_model"
 
 defaults:
   - data : california_housing
-  - logger : wandb
+  - logger : tensorboard
   - callbacks: swa
   - trainer : default
-  - tokenizer : PLE_periodic_linear
+  - tokenizer : PLE
   - model: regression      
   - _self_
 
-seed_everything: 0
+seed_everything: 4
 
 ckpt_path: null
 

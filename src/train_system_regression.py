@@ -10,7 +10,7 @@ class LightningFTTSystem(L.LightningModule):
     def __init__(
         self, 
         net: nn.Module, 
-        tokenizer: nn.Module,  # 💡 하이드라 설정 파일에서 인스턴스화하여 외부 주입받도록 변경
+        tokenizer: nn.Module,  
         criterion: nn.Module, 
         base_lr: float = 1e-3,
         eta_min: float = 1e-6,
@@ -34,7 +34,7 @@ class LightningFTTSystem(L.LightningModule):
         self.save_hyperparameters(self.hparams)
 
         self.net = net
-        self.tokenizer = tokenizer  # 💡 자식 모듈로 등록됨으로써 디바이스 이동 자동 처리
+        self.tokenizer = tokenizer  
         self.criterion = criterion
 
         # 메트릭 객체 선언 (의도를 직관적으로 보이게 네이밍 정리)

@@ -159,13 +159,13 @@ class ScalableTabularDataModule(L.LightningDataModule):
             y_test_scaled_tensor
         )
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, pin_memory=True, num_workers= self.num_workers)
+        return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, pin_memory=True, num_workers= self.num_workers, persistent_workers=True)
 
     def val_dataloader(self):
-        return DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=False, pin_memory=True, num_workers= self.num_workers)
+        return DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=False, pin_memory=True, num_workers= self.num_workers, persistent_workers=True)
 
     def test_dataloader(self):
-        return DataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=False, pin_memory=True, num_workers= self.num_workers)
+        return DataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=False, pin_memory=True, num_workers= self.num_workers, persistent_workers=True)
 
 def compute_bin_edges(df: pd.DataFrame, num_cols: list, n_bins: int = 16) -> dict:
     """각 수치형 컬럼별로 분위수(Quantile) 기반 경계값을 계산하는 함수"""

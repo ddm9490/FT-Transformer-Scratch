@@ -2,7 +2,7 @@ import lightning as L
 import numpy as np
 import torch
 import torch.nn as nn
-# 💡 분류용 추가 메트릭 임포트
+
 from torchmetrics.classification import (
     BinaryAccuracy, 
     BinaryAUROC, 

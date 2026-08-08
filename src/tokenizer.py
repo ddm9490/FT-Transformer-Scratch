@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 class TabularFeatureTokenizer(nn.Module):
-    def __init__(self, num_numerical : int, cat_cardinalities : list[int], d_model : int, num_embedding_method : str = "periodical", **kwargs):
+    def __init__(self, num_numerical : int, cat_cardinalities : list[int], d_model : int, num_embedding_method : str = "periodical", feat_dropout = 0.1, emb_dropout = 0.1, **kwargs):
         """
         Args:
             num_numerical (int): 수치형 변수의 개수
@@ -15,6 +15,9 @@ class TabularFeatureTokenizer(nn.Module):
         self.has_categorical = self.num_categorical > 0
 
         self.num_embedding_method = num_embedding_method
+
+        self.feat_dropout = feat_dropout
+
 
         # 1. 수치형 토크나이저 
         if num_numerical > 0:
@@ -29,26 +32,9 @@ class TabularFeatureTokenizer(nn.Module):
                     self.num_ple = PiecewiseLinearEncoding(bin_edges_dict, d_model)
             
             elif num_embedding_method == "linear":
-                self.num_weight = nn.Parameter(torch.randn(num_numerical, d_model))
-                self.num_bias = nn.Parameter(torch.randn(num_numerical, d_model))
-            
-            elif num_embedding_method == "PLE_linear":
-                bin_edges_dict = kwargs.get("bin_edges_dict",None)
-                if bin_edges_dict is not None:
-                    self.num_ple = PiecewiseLinearEncoding(bin_edges_dict, d_model)
-                self.num_weight = nn.Parameter(torch.randn(num_numerical, d_model))
-                self.num_bias = nn.Parameter(torch.randn(num_numerical, d_model))
-            
-            elif num_embedding_method == "PLE_periodic_linear":
-                bin_edges_dict = kwargs.get("bin_edges_dict",None)
-                if bin_edges_dict is not None:
-                    self.num_ple = PiecewiseLinearEncoding(bin_edges_dict, d_model)
-                self.num_weight = nn.Parameter(torch.randn(num_numerical, d_model))
-                self.num_bias = nn.Parameter(torch.randn(num_numerical, d_model))
-            
-                n_frequencies = kwargs.get("n_frequencies",16)
-                sigma = kwargs.get("sigma",0.01)
-                self.num_periodical_embedding = PeriodicEmbedding(num_numerical, d_model, n_frequencies = n_frequencies, sigma = sigma)
+                self.num_weight = nn.Parameter(torch.empty(num_numerical, d_model))
+                self.num_bias = nn.Parameter(torch.zeros(num_numerical, d_model))
+                nn.init.xavier_normal_(self.num_weight)
             
             self.num_feature_identifier = nn.Parameter(torch.empty(1,self.num_numerical,d_model))
             nn.init.normal_(self.num_feature_identifier, std = 0.01)
@@ -62,9 +48,14 @@ class TabularFeatureTokenizer(nn.Module):
             self.cat_feature_identifier = nn.Parameter(torch.empty(1,self.num_categorical,d_model))
             nn.init.normal_(self.cat_feature_identifier, std = 0.01)
 
+        self.emb_drop = nn.Dropout(emb_dropout)
+        self.mask_token = nn.Parameter(torch.empty(1,1,d_model))
+        nn.init.xavier_normal_(self.mask_token)
+
 
     def forward(self, x_num=None, x_cat=None):
         tokens = []
+        identifiers = []
 
         # 수치형 변수 토큰화: (batch_size, num_numerical, d_model)
         if x_num is not None and self.num_numerical > 0:
@@ -74,18 +65,10 @@ class TabularFeatureTokenizer(nn.Module):
                 x_num_val = self.num_ple(x_num)
             elif self.num_embedding_method == "linear":
                 x_num_val = x_num.unsqueeze(-1) * self.num_weight.unsqueeze(0) + self.num_bias.unsqueeze(0)
-            elif self.num_embedding_method == "PLE_linear":
-                x_num_ple_val = self.num_ple(x_num)
-                x_num_linear_val = x_num.unsqueeze(-1) * self.num_weight.unsqueeze(0) + self.num_bias.unsqueeze(0)
-                x_num_val = x_num_ple_val + x_num_linear_val
-            elif self.num_embedding_method == "PLE_periodic_linear":
-                x_num_ple_val = self.num_ple(x_num)
-                x_num_linear_val = x_num.unsqueeze(-1) * self.num_weight.unsqueeze(0) + self.num_bias.unsqueeze(0)
-                x_num_periodic_val = self.num_periodical_embedding(x_num)
-                x_num_val = x_num_ple_val + x_num_linear_val + x_num_periodic_val
             
             num_tokens = x_num_val + self.num_feature_identifier
             tokens.append(num_tokens)
+            identifiers.append(self.num_feature_identifier)
 
         # 범주형 변수 토큰화: (batch_size, num_categorical, d_model)
         if x_cat is not None and self.has_categorical:
@@ -98,9 +81,23 @@ class TabularFeatureTokenizer(nn.Module):
             x_cat_val = torch.cat(cat_tokens_list, dim=1)
             cat_tokens = x_cat_val + self.cat_feature_identifier
             tokens.append(cat_tokens)
+            identifiers.append(self.cat_feature_identifier)
 
-        # 전체 토큰 결합: (batch_size, total_features, d_model)
-        return torch.cat(tokens, dim=1)
+
+        x_tokens = torch.cat(tokens, dim=1)
+        all_identifiers = torch.cat(identifiers, dim=1)
+
+        if self.training and self.feat_dropout > 0.0:
+            batch_size, num_features, _ = x_tokens.shape
+
+            mask_prob = torch.rand(batch_size, num_features, 1, device=x_tokens.device)
+            drop_mask = mask_prob < self.feat_dropout
+
+            masked_values = self.mask_token + all_identifiers
+            masked_values = masked_values.expand(batch_size, num_features, -1)
+            x_tokens = torch.where(drop_mask, masked_values, x_tokens)
+
+        return self.emb_drop(x_tokens)
 
 class PeriodicEmbedding(nn.Module):
     """    

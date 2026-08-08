@@ -18,4 +18,3 @@ model:
     num_self_attn_layers : 3
     dropout_p : 0.2
     gated_attn : false
-    gated_AFR : true
