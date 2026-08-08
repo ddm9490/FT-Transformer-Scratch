@@ -1,10 +1,11 @@
 _target_: src.dataset.ScalableTabularDataModule
-dataset_dir: "data/ames_housing.csv"
+dataset_dir: "data/ames_housing_clean.csv"
 batch_size: 128
 num_workers: 4
 target_names:
   - "SalePrice" 
 
 task_type : "regression"
+in_features : 80
 out_features : 1
 n_bins: ${oc.select:tokenizer.n_bins, null}

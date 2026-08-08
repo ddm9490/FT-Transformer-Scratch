@@ -8,5 +8,6 @@ target_names:
 task_type : "classification"
 stratify : true
 
+data.in_features : 19
 out_features : 1
 n_bins: ${oc.select:tokenizer.n_bins, null}

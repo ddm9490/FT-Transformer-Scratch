@@ -1,8 +1,8 @@
-project_name: "test"
+project_name: "ft-transformer-gate-residuals"
 run_name: "best_model"
 
 defaults:
-  - data : california_housing_clean
+  - data : california_housing
   - logger : wandb
   - callbacks: swa
   - trainer : default

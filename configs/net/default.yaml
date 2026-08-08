@@ -1,7 +1,9 @@
 _target_: src.model.FTTModel
+in_dim : ${data.in_features}
 out_dim: ${data.out_features}
 d_model: 32
 num_self_attn_layers : 3
-nhead : 4
+num_heads : 2
 dropout_p : 0.2
-share_ffn : false
+gated_AFR : true
+gated_attn : false

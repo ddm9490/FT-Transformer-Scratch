@@ -2,20 +2,22 @@
 run_name: "best_model"
 
 defaults:
-  - override /data : california_housing_clean
+  - override /data : california_housing
   - override /model : regression
+  - override /tokenizer : PLE
   - _self_
 
 tokenizer:
-  n_bins : 32
+  n_bins :  32
 
 seed_everything : 100
 
 model:
-  base_lr : 0.01
+  base_lr : 0.001
   net:
     d_model : 32
     num_self_attn_layers : 3
     dropout_p : 0.2
+    num_heads : 4
     gated_attn : false
     gated_AFR : true
